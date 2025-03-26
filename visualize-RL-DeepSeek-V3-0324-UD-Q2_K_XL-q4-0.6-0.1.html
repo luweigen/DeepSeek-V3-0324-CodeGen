@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>强化学习基础概念可视化</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .intro {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .concepts-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        
+        .concept-card {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            width: calc(33% - 20px);
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .concept-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .concept-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .concept-description {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .visualization {
+            width: 100%;
+            height: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            margin-top: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .agent {
+            width: 50px;
+            height: 50px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            position: absolute;
+            left: 50px;
+            top: 175px;
+            transition: all 0.5s ease;
+        }
+        
+        .environment {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: #ecf0f1;
+        }
+        
+        .state {
+            width: 30px;
+            height: 30px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            position: absolute;
+        }
+        
+        .reward {
+            width: 20px;
+            height: 20px;
+            background-color: #f39c12;
+            border-radius: 50%;
+            position: absolute;
+            animation: pulse 2s infinite;
+        }
+        
+        .action-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 25px solid #3498db;
+            animation: fadeIn 1s;
+        }
+        
+        .value-display {
+            position: absolute;
+            font-size: 12px;
+            color: #9b59b6;
+            font-weight: bold;
+        }
+        
+        .policy-line {
+            position: absolute;
+            height: 3px;
+            background-color: #e67e22;
+            transform-origin: left center;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .active-concept {
+            border: 3px solid #3498db;
+            background-color: #eaf2f8;
+        }
+        
+        .rl-process {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        
+        .rl-step {
+            text-align: center;
+            padding: 15px;
+            background-color: #fff;
+            margin: 0 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-width: 100px;
+        }
+        
+        .rl-arrow {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            color: #7f8c8d;
+        }
+        
+        @media (max-width: 768px) {
+            .concept-card {
+                width: 100%;
+            }
+            
+            .rl-process {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .rl-arrow {
+                transform: rotate(90deg);
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>强化学习基础概念可视化</h1>
+    
+    <div class="intro">
+        <p>强化学习是机器学习的一个重要分支，它关注的是智能体(agent)如何通过与环境(environment)的交互来学习最优策略(policy)。本页面通过交互式可视化帮助您理解强化学习的基本概念和流程。</p>
+    </div>
+    
+    <div class="concepts-container">
+        <div class="concept-card" id="agent-card" onclick="showConcept('agent')">
+            <div class="concept-title">Agent (智能体)</div>
+            <div class="concept-description" id="agent-desc">
+                <p>智能体是强化学习中的学习者和决策者。它通过感知环境状态，采取行动，并从获得的奖励中学习。</p>
+                <p>在可视化中，红色圆形代表智能体。</p>
+            </div>
+        </div>
+        
+        <div class="concept-card" id="environment-card" onclick="showConcept('environment')">
+            <div class="concept-title">Environment (环境)</div>
+            <div class="concept-description" id="environment-desc">
+                <p>环境是智能体所处的外部世界，它会响应智能体的动作，并产生新的状态和奖励。</p>
+                <p>在可视化中，浅灰色区域代表环境。</p>
+            </div>
+        </div>
+        
+        <div class="concept-card" id="state-card" onclick="showConcept('state')">
+            <div class="concept-title">State (状态)</div>
+            <div class="concept-description" id="state-desc">
+                <p>状态是环境在特定时刻的完整描述，是智能体做决策的依据。</p>
+                <p>在可视化中，绿色圆形代表不同的状态。</p>
+            </div>
+        </div>
+        
+        <div class="concept-card" id="action-card" onclick="showConcept('action')">
+            <div class="concept-title">Action (动作)</div>
+            <div class="concept-description" id="action-desc">
+                <p>动作是智能体可以采取的行为，会改变环境的状态。</p>
+                <p>在可视化中，蓝色箭头代表可能的动作。</p>
+            </div>
+        </div>
+        
+        <div class="concept-card" id="reward-card" onclick="showConcept('reward')">
+            <div class="concept-title">Reward (奖励)</div>
+            <div class="concept-description" id="reward-desc">
+                <p>奖励是环境对智能体动作的即时反馈，用于评估动作的好坏。</p>
+                <p>在可视化中，橙色圆形代表奖励。</p>
+            </div>
+        </div>
+        
+        <div class="concept-card" id="policy-card" onclick="showConcept('policy')">
+            <div class="concept-title">Policy (策略)</div>
+            <div class="concept-description" id="policy-desc">
+                <p>策略是智能体在给定状态下选择动作的规则，可以是确定性的或随机的。</p>
+                <p>在可视化中，橙色线条代表策略的倾向。</p>
+            </div>
+        </div>
+        
+        <div class="concept-card" id="value-card" onclick="showConcept('value')">
+            <div class="concept-title">Value Function (价值函数)</div>
+            <div class="concept-description" id="value-desc">
+                <p>价值函数评估在特定状态下遵循特定策略的长期收益。</p>
+                <p>在可视化中，紫色数字代表状态的估计价值。</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="visualization" id="rl-visualization">
+        <div class="environment">
+            <div class="agent" id="rl-agent"></div>
+            <!-- States will be added dynamically -->
+            <!-- Rewards will be added dynamically -->
+            <!-- Action arrows will be added dynamically -->
+            <!-- Policy lines will be added dynamically -->
+            <!-- Value displays will be added dynamically -->
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="runEpisode()">运行一个完整回合</button>
+        <button onclick="resetVisualization()">重置</button>
+    </div>
+    
+    <div class="rl-process">
+        <div class="rl-step">Agent观察State</div>
+        <div class="rl-arrow">→</div>
+        <div class="rl-step">Agent选择Action</div>
+        <div class="rl-arrow">→</div>
+        <div class="rl-step">Environment给出Reward</div>
+        <div class="rl-arrow">→</div>
+        <div class="rl-step">Environment转移到新State</div>
+    </div>
+    
+    <script>
+        // 初始化变量
+        let currentState = 0;
+        const states = [];
+        const rewards = [];
+        const valueDisplays = [];
+        const actionArrows = [];
+        const policyLines = [];
+        
+        // 页面加载时初始化可视化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeVisualization();
+        });
+        
+        function initializeVisualization() {
+            const env = document.querySelector('.environment');
+            
+            // 创建5个状态
+            for (let i = 0; i < 5; i++) {
+                const state = document.createElement('div');
+                state.className = 'state';
+                state.id = 'state-' + i;
+                state.style.left = (100 + i * 150) + 'px';
+                state.style.top = (100 + Math.sin(i) * 50) + 'px';
+                env.appendChild(state);
+                states.push(state);
+                
+                // 创建价值显示
+                const valueDisplay = document.createElement('div');
+                valueDisplay.className = 'value-display';
+                valueDisplay.id = 'value-' + i;
+                valueDisplay.style.left = (90 + i * 150) + 'px';
+                valueDisplay.style.top = (140 + Math.sin(i) * 50) + 'px';
+                valueDisplay.textContent = 'V: ' + (0.5 + Math.random() * 0.5).toFixed(2);
+                env.appendChild(valueDisplay);
+                valueDisplays.push(valueDisplay);
+            }
+            
+            // 创建3个奖励
+            for (let i = 0; i < 3; i++) {
+                const reward = document.createElement('div');
+                reward.className = 'reward';
+                reward.id = 'reward-' + i;
+                reward.style.left = (150 + i * 200) + 'px';
+                reward.style.top = (50 + i * 50) + 'px';
+                env.appendChild(reward);
+                rewards.push(reward);
+            }
+            
+            // 创建动作箭头
+            for (let i = 0; i < states.length - 1; i++) {
+                const arrow = document.createElement('div');
+                arrow.className = 'action-arrow';
+                arrow.id = 'action-' + i;
+                const startX = parseInt(states[i].style.left) + 15;
+                const startY = parseInt(states[i].style.top) + 15;
+                const endX = parseInt(states[i+1].style.left) + 15;
+                const endY = parseInt(states[i+1].style.top) + 15;
+                
+                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+                
+                arrow.style.left = (startX + (endX - startX) * 0.3) + 'px';
+                arrow.style.top = (startY + (endY - startY) * 0.3) + 'px';
+                arrow.style.transform = `rotate(${angle}deg)`;
+                env.appendChild(arrow);
+                actionArrows.push(arrow);
+            }
+            
+            // 创建策略线
+            for (let i = 0; i < states.length - 1; i++) {
+                const line = document.createElement('div');
+                line.className = 'policy-line';
+                const startX = parseInt(states[i].style.left) + 15;
+                const startY = parseInt(states[i].style.top) + 15;
+                const endX = parseInt(states[i+1].style.left) + 15;
+                const endY = parseInt(states[i+1].style.top) + 15;
+                
+                const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                const angle = Math.atan2(endY - startY, endX - startX);
+                
+                line.style.width = length * 0.6 + 'px';
+                line.style.left = startX + 'px';
+                line.style.top = startY + 'px';
+                line.style.transform = `rotate(${angle}rad)`;
+                line.style.opacity = 0.7;
+                env.appendChild(line);
+                policyLines.push(line);
+            }
+        }
+        
+        function showConcept(concept) {
+            // 移除所有卡片的激活状态
+            document.querySelectorAll('.concept-card').forEach(card => {
+                card.classList.remove('active-concept');
+            });
+            
+            // 隐藏所有描述
+            document.querySelectorAll('.concept-description').forEach(desc => {
+                desc.style.display = 'none';
+            });
+            
+            // 激活当前卡片并显示描述
+            const card = document.getElementById(concept + '-card');
+            const desc = document.getElementById(concept + '-desc');
+            
+            card.classList.add('active-concept');
+            desc.style.display = 'block';
+            
+            // 根据概念高亮可视化中的对应元素
+            highlightElements(concept);
+        }
+        
+        function highlightElements(concept) {
+            // 重置所有元素的样式
+            document.getElementById('rl-agent').style.backgroundColor = '#e74c3c';
+            states.forEach(state => state.style.backgroundColor = '#2ecc71');
+            rewards.forEach(reward => reward.style.backgroundColor = '#f39c12');
+            actionArrows.forEach(arrow => {
+                arrow.style.borderBottomColor = '#3498db';
+                arrow.style.opacity = '0.5';
+            });
+            policyLines.forEach(line => {
+                line.style.backgroundColor = '#e67e22';
+                line.style.opacity = '0.7';
+            });
+            valueDisplays.forEach(display => {
+                display.style.color = '#9b59b6';
+            });
+            
+            // 根据概念高亮对应元素
+            switch(concept) {
+                case 'agent':
+                    document.getElementById('rl-agent').style.backgroundColor = '#c0392b';
+                    break;
+                case 'environment':
+                    document.querySelector('.environment').style.backgroundColor = '#bdc3c7';
+                    setTimeout(() => {
+                        document.querySelector('.environment').style.backgroundColor = '#ecf0f1';
+                    }, 1000);
+                    break;
+                case 'state':
+                    states.forEach(state => state.style.backgroundColor = '#27ae60');
+                    break;
+                case 'action':
+                    actionArrows.forEach(arrow => {
+                        arrow.style.borderBottomColor = '#2980b9';
+                        arrow.style.opacity = '1';
+                    });
+                    break;
+                case 'reward':
+                    rewards.forEach(reward => reward.style.backgroundColor = '#e67e22');
+                    break;
+                case 'policy':
+                    policyLines.forEach(line => {
+                        line.style.backgroundColor = '#d35400';
+                        line.style.opacity = '1';
+                    });
+                    break;
+                case 'value':
+                    valueDisplays.forEach(display => {
+                        display.style.color = '#8e44ad';
+                        display.style.fontWeight = 'bold';
+                    });
+                    break;
+            }
+        }
+        
+        function runEpisode() {
+            const agent = document.getElementById('rl-agent');
+            let currentStep = 0;
+            const totalSteps = states.length;
+            
+            function nextStep() {
+                if (currentStep >= totalSteps) {
+                    // 回合结束，回到起点
+                    currentStep = 0;
+                    setTimeout(() => {
+                        agent.style.left = '50px';
+                        agent.style.top = '175px';
+                        currentState = 0;
+                    }, 1000);
+                    return;
+                }
+                
+                // 移动到下一个状态
+                const nextState = states[currentStep];
+                const nextX = parseInt(nextState.style.left) - 25;
+                const nextY = parseInt(nextState.style.top) - 25;
+                
+                agent.style.left = nextX + 'px';
+                agent.style.top = nextY + 'px';
+                
+                // 更新当前状态
+                currentState = currentStep;
+                currentStep++;
+                
+                // 如果是最后一个状态，显示获得奖励的动画
+                if (currentStep === totalSteps) {
+                    setTimeout(() => {
+                        const reward = document.createElement('div');
+                        reward.className = 'reward';
+                        reward.style.left = (parseInt(agent.style.left) + 25) + 'px';
+                        reward.style.top = (parseInt(agent.style.top) - 30) + 'px';
+                        reward.style.position = 'absolute';
+                        reward.style.animation = 'pulse 0.5s 3';
+                        document.querySelector('.environment').appendChild(reward);
+                        
+                        setTimeout(() => {
+                            reward.remove();
+                        }, 2000);
+                    }, 500);
+                }
+                
+                setTimeout(nextStep, 1000);
+            }
+            
+            nextStep();
+        }
+        
+        function resetVisualization() {
+            const agent = document.getElementById('rl-agent');
+            agent.style.left = '50px';
+            agent.style.top = '175px';
+            currentState = 0;
+        }
+    </script>
+</body>
+</html>

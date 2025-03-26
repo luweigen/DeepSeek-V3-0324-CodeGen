@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>强化学习基础概念可视化</title>
+        <style>
+            body {
+                font-family: "Arial", sans-serif;
+                margin: 0;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                color: #2c3e50;
+                text-align: center;
+            }
+            .concepts {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 15px;
+                margin-bottom: 30px;
+            }
+            .concept-btn {
+                padding: 10px 15px;
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            .concept-btn:hover {
+                background-color: #2980b9;
+                transform: scale(1.05);
+            }
+            .concept-btn.active {
+                background-color: #e74c3c;
+            }
+            .visualization {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                min-height: 400px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 20px;
+                margin-bottom: 20px;
+                background-color: #f9f9f9;
+            }
+            .canvas-container {
+                width: 100%;
+                height: 300px;
+                position: relative;
+            }
+            canvas {
+                border: 1px solid #ccc;
+                background-color: white;
+            }
+            .explanation {
+                margin-top: 20px;
+                padding: 15px;
+                background-color: #ecf0f1;
+                border-radius: 5px;
+                display: none;
+            }
+            .explanation.active {
+                display: block;
+                animation: fadeIn 0.5s;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                }
+                to {
+                    opacity: 1;
+                }
+            }
+            .rl-diagram {
+                width: 100%;
+                max-width: 800px;
+                margin: 20px auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>强化学习基础概念可视化</h1>
+
+            <div class="concepts">
+                <button class="concept-btn" data-concept="overview">
+                    概述
+                </button>
+                <button class="concept-btn" data-concept="agent">Agent</button>
+                <button class="concept-btn" data-concept="environment">
+                    Environment
+                </button>
+                <button class="concept-btn" data-concept="state">State</button>
+                <button class="concept-btn" data-concept="action">
+                    Action
+                </button>
+                <button class="concept-btn" data-concept="reward">
+                    Reward
+                </button>
+                <button class="concept-btn" data-concept="policy">
+                    Policy
+                </button>
+                <button class="concept-btn" data-concept="value">
+                    Value Function
+                </button>
+            </div>
+
+            <div class="visualization">
+                <div class="canvas-container">
+                    <canvas id="rlCanvas" width="800" height="300"></canvas>
+                </div>
+
+                <div id="overview" class="explanation">
+                    <h2>强化学习概述</h2>
+                    <p>
+                        强化学习是机器学习的一个分支，它关注的是智能体(Agent)如何通过与环境(Environment)的交互来学习最优策略。
+                    </p>
+                    <img
+                        src="rl_overview.png"
+                        alt="强化学习概述图"
+                        class="rl-diagram"
+                    />
+                    <p>点击上面的按钮可以了解各个组件的详细信息。</p>
+                </div>
+
+                <div id="agent" class="explanation">
+                    <h2>Agent (智能体)</h2>
+                    <p>
+                        Agent是强化学习中的学习者或决策者，它通过感知环境状态并采取行动来与环境交互。
+                    </p>
+                    <p>Agent的目标是通过学习最大化长期累积奖励。</p>
+                    <p>在下面的动画中，蓝色方块代表Agent。</p>
+                </div>
+
+                <div id="environment" class="explanation">
+                    <h2>Environment (环境)</h2>
+                    <p>
+                        Environment是Agent所处的外部世界，它接收Agent的动作并返回新的状态和奖励。
+                    </p>
+                    <p>环境可以是物理世界、游戏、模拟器等。</p>
+                    <p>在下面的动画中，整个画布代表环境。</p>
+                </div>
+
+                <div id="state" class="explanation">
+                    <h2>State (状态)</h2>
+                    <p>
+                        State是环境在特定时刻的描述，它包含了Agent做出决策所需的所有信息。
+                    </p>
+                    <p>
+                        状态可以是完全可观测的(完全信息)或部分可观测的(部分信息)。
+                    </p>
+                    <p>在下面的动画中，Agent的位置和周围环境构成了状态。</p>
+                </div>
+
+                <div id="action" class="explanation">
+                    <h2>Action (动作)</h2>
+                    <p>Action是Agent在特定状态下可以采取的行为。</p>
+                    <p>
+                        动作空间可以是离散的(如上下左右)或连续的(如方向盘角度)。
+                    </p>
+                    <p>在下面的动画中，Agent可以采取移动动作。</p>
+                </div>
+
+                <div id="reward" class="explanation">
+                    <h2>Reward (奖励)</h2>
+                    <p>Reward是环境对Agent采取动作的即时反馈信号。</p>
+                    <p>Agent的目标是最大化长期累积奖励，而不是即时奖励。</p>
+                    <p>
+                        在下面的动画中，到达目标会获得正奖励，碰到障碍会获得负奖励。
+                    </p>
+                </div>
+
+                <div id="policy" class="explanation">
+                    <h2>Policy (策略)</h2>
+                    <p>
+                        Policy是Agent的行为策略，它定义了在给定状态下选择动作的概率分布。
+                    </p>
+                    <p>
+                        策略可以是确定性的(直接输出动作)或随机的(输出动作概率)。
+                    </p>
+                    <p>在下面的动画中，Agent遵循某种策略决定移动方向。</p>
+                </div>
+
+                <div id="value" class="explanation">
+                    <h2>Value Function (价值函数)</h2>
+                    <p>
+                        Value Function评估在给定状态下遵循特定策略的长期价值。
+                    </p>
+                    <p>
+                        它表示从该状态开始，按照当前策略能获得的期望累积奖励。
+                    </p>
+                    <p>在下面的动画中，不同位置的颜色深浅表示该位置的价值。</p>
+                </div>
+            </div>
+        </div>
+
+        <script src="rl_visualization.js"></script>
+    </body>
+</html>

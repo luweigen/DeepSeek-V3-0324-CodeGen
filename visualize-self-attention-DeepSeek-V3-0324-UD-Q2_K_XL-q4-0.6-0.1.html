@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transformer Self-Attention 可视化</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .matrix {
+            margin: 20px;
+            display: inline-block;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .cell.highlight {
+            background-color: #ffeb3b;
+        }
+        .cell.active {
+            background-color: #4caf50;
+            color: white;
+        }
+        .slider-container {
+            width: 80%;
+            margin: 20px 0;
+        }
+        .explanation {
+            margin: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            max-width: 800px;
+        }
+        .step-btn {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .step-btn:hover {
+            background-color: #0b7dda;
+        }
+        .attention-weights {
+            margin-top: 20px;
+        }
+        .token {
+            padding: 5px 10px;
+            margin: 5px;
+            background-color: #e3f2fd;
+            border-radius: 3px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Transformer Self-Attention 机制可视化</h1>
+        
+        <div class="explanation">
+            <h3>Self-Attention 三步计算过程:</h3>
+            <ol>
+                <li><strong>Query, Key, Value 计算</strong>: 每个输入token通过三个不同的线性变换生成Q, K, V</li>
+                <li><strong>注意力分数计算</strong>: Q与K的点积，然后缩放并应用softmax</li>
+                <li><strong>加权求和</strong>: 注意力权重与V的加权求和得到输出</li>
+            </ol>
+            <p>使用下方的控制按钮逐步查看计算过程。</p>
+        </div>
+        
+        <div id="input-tokens">
+            <h3>输入 Tokens:</h3>
+            <div id="tokens-container"></div>
+        </div>
+        
+        <div id="qkv-matrices">
+            <h3>Query, Key, Value 矩阵:</h3>
+            <div id="qkv-container"></div>
+        </div>
+        
+        <div id="attention-scores">
+            <h3>注意力分数计算:</h3>
+            <div id="scores-container"></div>
+        </div>
+        
+        <div id="output">
+            <h3>注意力权重与输出:</h3>
+            <div id="output-container"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="step-btn" id="prev-step">上一步</button>
+            <button class="step-btn" id="next-step">下一步</button>
+            <button class="step-btn" id="reset">重置</button>
+        </div>
+        
+        <div class="slider-container">
+            <label for="step-slider">步骤:</label>
+            <input type="range" id="step-slider" min="1" max="5" value="1">
+            <span id="step-label">1/5: 输入Tokens</span>
+        </div>
+    </div>
+
+    <script>
+        // 示例数据
+        const tokens = ["The", "cat", "sat", "on", "the", "mat"];
+        const embeddings = {
+            "The": [0.2, 0.4, 0.1],
+            "cat": [0.6, 0.1, 0.3],
+            "sat": [0.3, 0.3, 0.4],
+            "on": [0.1, 0.5, 0.4],
+            "the": [0.2, 0.4, 0.1],
+            "mat": [0.5, 0.2, 0.3]
+        };
+        
+        // 随机生成权重矩阵 (3x3 为了简化演示)
+        const Wq = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]];
+        const Wk = [[0.9, 0.8, 0.7], [0.6, 0.5, 0.4], [0.3, 0.2, 0.1]];
+        const Wv = [[0.5, 0.5, 0.5], [0.3, 0.3, 0.3], [0.2, 0.2, 0.2]];
+        
+        // 计算Q, K, V
+        function computeQKV() {
+            const Q = {}, K = {}, V = {};
+            
+            tokens.forEach(token => {
+                const embed = embeddings[token];
+                // Q = Wq * embed
+                Q[token] = [
+                    Wq[0][0]*embed[0] + Wq[0][1]*embed[1] + Wq[0][2]*embed[2],
+                    Wq[1][0]*embed[0] + Wq[1][1]*embed[1] + Wq[1][2]*embed[2],
+                    Wq[2][0]*embed[0] + Wq[2][1]*embed[1] + Wq[2][2]*embed[2]
+                ];
+                
+                // K = Wk * embed
+                K[token] = [
+                    Wk[0][0]*embed[0] + Wk[0][1]*embed[1] + Wk[0][2]*embed[2],
+                    Wk[1][0]*embed[0] + Wk[1][1]*embed[1] + Wk[1][2]*embed[2],
+                    Wk[2][0]*embed[0] + Wk[2][1]*embed[1] + Wk[2][2]*embed[2]
+                ];
+                
+                // V = Wv * embed
+                V[token] = [
+                    Wv[0][0]*embed[0] + Wv[0][1]*embed[1] + Wv[0][2]*embed[2],
+                    Wv[1][0]*embed[0] + Wv[1][1]*embed[1] + Wv[1][2]*embed[2],
+                    Wv[2][0]*embed[0] + Wv[2][1]*embed[1] + Wv[2][2]*embed[2]
+                ];
+            });
+            
+            return { Q, K, V };
+        }
+        
+        // 计算注意力分数
+        function computeAttentionScores(Q, K) {
+            const scores = {};
+            const d = 3; // 维度
+            
+            tokens.forEach(token1 => {
+                scores[token1] = {};
+                tokens.forEach(token2 => {
+                    // 分数 = Q[token1] · K[token2] / sqrt(d)
+                    const dotProduct = Q[token1][0]*K[token2][0] + Q[token1][1]*K[token2][1] + Q[token1][2]*K[token2][2];
+                    scores[token1][token2] = dotProduct / Math.sqrt(d);
+                });
+            });
+            
+            return scores;
+        }
+        
+        // 应用softmax
+        function applySoftmax(scores) {
+            tokens.forEach(token => {
+                const expScores = tokens.map(t => Math.exp(scores[token][t]));
+                const sumExp = expScores.reduce((a, b) => a + b, 0);
+                tokens.forEach(t => {
+                    scores[token][t] = Math.exp(scores[token][t]) / sumExp;
+                });
+            });
+            return scores;
+        }
+        
+        // 计算输出
+        function computeOutput(weights, V) {
+            const output = {};
+            
+            tokens.forEach(token => {
+                output[token] = [0, 0, 0];
+                tokens.forEach(t => {
+                    // 加权求和 V[t] * weight
+                    output[token][0] += V[t][0] * weights[token][t];
+                    output[token][1] += V[t][1] * weights[token][t];
+                    output[token][2] += V[t][2] * weights[token][t];
+                });
+            });
+            
+            return output;
+        }
+        
+        // 渲染函数
+        function render(step) {
+            const { Q, K, V } = computeQKV();
+            const scores = computeAttentionScores(Q, K);
+            const weights = applySoftmax({...scores});
+            const output = computeOutput(weights, V);
+            
+            // 更新步骤标签
+            const stepLabels = [
+                "1/5: 输入Tokens",
+                "2/5: 计算Q, K, V",
+                "3/5: 计算注意力分数",
+                "4/5: 应用Softmax",
+                "5/5: 加权求和输出"
+            ];
+            document.getElementById("step-label").textContent = stepLabels[step-1];
+            document.getElementById("step-slider").value = step;
+            
+            // 渲染输入tokens
+            const tokensContainer = document.getElementById("tokens-container");
+            tokensContainer.innerHTML = '';
+            tokens.forEach(token => {
+                const tokenDiv = document.createElement("div");
+                tokenDiv.className = "token";
+                tokenDiv.textContent = token;
+                tokensContainer.appendChild(tokenDiv);
+            });
+            
+            // 根据步骤渲染不同内容
+            if (step >= 2) {
+                renderMatrix("Q", Q, "qkv-container");
+                renderMatrix("K", K, "qkv-container");
+                renderMatrix("V", V, "qkv-container");
+            }
+            
+            if (step >= 3) {
+                renderScores(scores, "scores-container");
+            }
+            
+            if (step >= 4) {
+                renderWeights(weights, "scores-container");
+            }
+            
+            if (step >= 5) {
+                renderOutput(output, "output-container");
+            }
+        }
+        
+        // 渲染矩阵
+        function renderMatrix(name, matrix, containerId) {
+            const container = document.getElementById(containerId);
+            
+            const matrixDiv = document.createElement("div");
+            matrixDiv.className = "matrix";
+            
+            const title = document.createElement("h4");
+            title.textContent = name + " Matrix:";
+            matrixDiv.appendChild(title);
+            
+            const table = document.createElement("div");
+            table.style.display = "flex";
+            
+            // 表头
+            const header = document.createElement("div");
+            header.className = "cell";
+            header.textContent = name;
+            table.appendChild(header);
+            
+            tokens.forEach(token => {
+                const th = document.createElement("div");
+                th.className = "cell";
+                th.textContent = token;
+                table.appendChild(th);
+            });
+            
+            matrixDiv.appendChild(table);
+            
+            // 数据行
+            for (let i = 0; i < 3; i++) {
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                
+                const dimLabel = document.createElement("div");
+                dimLabel.className = "cell";
+                dimLabel.textContent = `Dim ${i+1}`;
+                row.appendChild(dimLabel);
+                
+                tokens.forEach(token => {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.textContent = matrix[token][i].toFixed(2);
+                    row.appendChild(cell);
+                });
+                
+                table.appendChild(row);
+            }
+            
+            container.appendChild(matrixDiv);
+        }
+        
+        // 渲染分数矩阵
+        function renderScores(scores, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<h4>注意力分数 (Q·K/√d):</h4>';
+            
+            const table = document.createElement("div");
+            table.style.display = "inline-block";
+            
+            // 表头
+            const header = document.createElement("div");
+            header.style.display = "flex";
+            
+            const corner = document.createElement("div");
+            corner.className = "cell";
+            corner.textContent = "Q \\ K";
+            header.appendChild(corner);
+            
+            tokens.forEach(token => {
+                const th = document.createElement("div");
+                th.className = "cell";
+                th.textContent = token;
+                header.appendChild(th);
+            });
+            
+            table.appendChild(header);
+            
+            // 数据行
+            tokens.forEach(token1 => {
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                
+                const rowHeader = document.createElement("div");
+                rowHeader.className = "cell";
+                rowHeader.textContent = token1;
+                row.appendChild(rowHeader);
+                
+                tokens.forEach(token2 => {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.textContent = scores[token1][token2].toFixed(2);
+                    row.appendChild(cell);
+                });
+                
+                table.appendChild(row);
+            });
+            
+            container.appendChild(table);
+        }
+        
+        // 渲染权重矩阵
+        function renderWeights(weights, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<h4>注意力权重 (Softmax):</h4>';
+            
+            const table = document.createElement("div");
+            table.style.display = "inline-block";
+            
+            // 表头
+            const header = document.createElement("div");
+            header.style.display = "flex";
+            
+            const corner = document.createElement("div");
+            corner.className = "cell";
+            corner.textContent = "Q \\ K";
+            header.appendChild(corner);
+            
+            tokens.forEach(token => {
+                const th = document.createElement("div");
+                th.className = "cell";
+                th.textContent = token;
+                header.appendChild(th);
+            });
+            
+            table.appendChild(header);
+            
+            // 数据行
+            tokens.forEach(token1 => {
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                
+                const rowHeader = document.createElement("div");
+                rowHeader.className = "cell";
+                rowHeader.textContent = token1;
+                row.appendChild(rowHeader);
+                
+                tokens.forEach(token2 => {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.textContent = weights[token1][token2].toFixed(2);
+                    cell.style.backgroundColor = `rgba(0, 128, 0, ${weights[token1][token2]})`;
+                    cell.style.color = weights[token1][token2] > 0.5 ? "white" : "black";
+                    row.appendChild(cell);
+                });
+                
+                table.appendChild(row);
+            });
+            
+            container.appendChild(table);
+        }
+        
+        // 渲染输出
+        function renderOutput(output, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<h4>输出 (权重·V):</h4>';
+            
+            const table = document.createElement("div");
+            table.style.display = "inline-block";
+            
+            // 表头
+            const header = document.createElement("div");
+            header.style.display = "flex";
+            
+            const corner = document.createElement("div");
+            corner.className = "cell";
+            corner.textContent = "Token";
+            header.appendChild(corner);
+            
+            for (let i = 0; i < 3; i++) {
+                const th = document.createElement("div");
+                th.className = "cell";
+                th.textContent = `Dim ${i+1}`;
+                header.appendChild(th);
+            }
+            
+            table.appendChild(header);
+            
+            // 数据行
+            tokens.forEach(token => {
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                
+                const rowHeader = document.createElement("div");
+                rowHeader.className = "cell";
+                rowHeader.textContent = token;
+                row.appendChild(rowHeader);
+                
+                for (let i = 0; i < 3; i++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.textContent = output[token][i].toFixed(2);
+                    row.appendChild(cell);
+                }
+                
+                table.appendChild(row);
+            });
+            
+            container.appendChild(table);
+        }
+        
+        // 初始化
+        let currentStep = 1;
+        render(currentStep);
+        
+        // 事件监听
+        document.getElementById("next-step").addEventListener("click", () => {
+            if (currentStep < 5) {
+                currentStep++;
+                render(currentStep);
+            }
+        });
+        
+        document.getElementById("prev-step").addEventListener("click", () => {
+            if (currentStep > 1) {
+                currentStep--;
+                render(currentStep);
+            }
+        });
+        
+        document.getElementById("reset").addEventListener("click", () => {
+            currentStep = 1;
+            render(currentStep);
+        });
+        
+        document.getElementById("step-slider").addEventListener("input", (e) => {
+            currentStep = parseInt(e.target.value);
+            render(currentStep);
+        });
+    </script>
+</body>
+</html>

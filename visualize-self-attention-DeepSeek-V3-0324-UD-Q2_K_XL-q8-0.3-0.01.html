@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transformer Self-Attention 可视化</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .step {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .vectors {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+        }
+        .vector {
+            width: 80px;
+            height: 120px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            position: relative;
+        }
+        .vector-label {
+            position: absolute;
+            top: -20px;
+            font-weight: bold;
+        }
+        .dim {
+            width: 100%;
+            height: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .matrix {
+            display: grid;
+            gap: 2px;
+            margin: 15px 0;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ccc;
+            font-size: 12px;
+        }
+        .highlight {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { background-color: white; }
+            50% { background-color: #ffcccc; }
+            100% { background-color: white; }
+        }
+        .button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider {
+            width: 100%;
+        }
+        .arrow {
+            font-size: 24px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .attention-matrix {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin: 15px 0;
+        }
+        .attention-cell {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+        .active {
+            background-color: #ffeb3b;
+        }
+        .explanation {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Transformer Self-Attention 可视化</h1>
+        
+        <div class="step" id="step1">
+            <h2>1. 输入词向量</h2>
+            <p>我们有以下输入词向量(已嵌入和添加位置编码):</p>
+            <div class="vectors">
+                <div class="vector" id="input1">
+                    <div class="vector-label">词1</div>
+                    <div class="dim">0.2</div>
+                    <div class="dim">0.5</div>
+                    <div class="dim">-0.3</div>
+                    <div class="dim">0.7</div>
+                </div>
+                <div class="vector" id="input2">
+                    <div class="vector-label">词2</div>
+                    <div class="dim">-0.4</div>
+                    <div class="dim">0.1</div>
+                    <div class="dim">0.6</div>
+                    <div class="dim">-0.2</div>
+                </div>
+                <div class="vector" id="input3">
+                    <div class="vector-label">词3</div>
+                    <div class="dim">0.3</div>
+                    <div class="dim">-0.2</div>
+                    <div class="dim">0.4</div>
+                    <div class="dim">0.1</div>
+                </div>
+            </div>
+            <div class="explanation">
+                这是Transformer的输入层，每个词被表示为一个向量(这里简化显示为4维)。
+            </div>
+        </div>
+        
+        <div class="step" id="step2">
+            <h2>2. 生成Query, Key, Value</h2>
+            <p>每个输入向量通过线性变换生成Q, K, V:</p>
+            <div class="vectors">
+                <div class="vector" id="q1">
+                    <div class="vector-label">Q1</div>
+                    <div class="dim">0.4</div>
+                    <div class="dim">-0.1</div>
+                    <div class="dim">0.3</div>
+                </div>
+                <div class="vector" id="k1">
+                    <div class="vector-label">K1</div>
+                    <div class="dim">0.2</div>
+                    <div class="dim">0.5</div>
+                    <div class="dim">-0.3</div>
+                </div>
+                <div class="vector" id="v1">
+                    <div class="vector-label">V1</div>
+                    <div class="dim">0.7</div>
+                    <div class="dim">-0.2</div>
+                    <div class="dim">0.4</div>
+                </div>
+            </div>
+            <div class="vectors">
+                <div class="vector" id="q2">
+                    <div class="vector-label">Q2</div>
+                    <div class="dim">-0.3</div>
+                    <div class="dim">0.2</div>
+                    <div class="dim">0.5</div>
+                </div>
+                <div class="vector" id="k2">
+                    <div class="vector-label">K2</div>
+                    <div class="dim">-0.4</div>
+                    <div class="dim">0.1</div>
+                    <div class="dim">0.6</div>
+                </div>
+                <div class="vector" id="v2">
+                    <div class="vector-label">V2</div>
+                    <div class="dim">-0.1</div>
+                    <div class="dim">0.3</div>
+                    <div class="dim">-0.2</div>
+                </div>
+            </div>
+            <div class="vectors">
+                <div class="vector" id="q3">
+                    <div class="vector-label">Q3</div>
+                    <div class="dim">0.1</div>
+                    <div class="dim">-0.4</div>
+                    <div class="dim">0.2</div>
+                </div>
+                <div class="vector" id="k3">
+                    <div class="vector-label">K3</div>
+                    <div class="dim">0.3</div>
+                    <div class="dim">-0.2</div>
+                    <div class="dim">0.4</div>
+                </div>
+                <div class="vector" id="v3">
+                    <div class="vector-label">V3</div>
+                    <div class="dim">0.5</div>
+                    <div class="dim">-0.1</div>
+                    <div class="dim">0.3</div>
+                </div>
+            </div>
+            <button class="button" onclick="showProjection()">显示投影过程</button>
+            <div class="explanation" id="projection-explanation" style="display:none;">
+                每个输入向量通过三个不同的权重矩阵(W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup>)投影，
+                分别生成Query(用于查询)、Key(用于匹配)和Value(用于信息提取)。
+            </div>
+        </div>
+        
+        <div class="step" id="step3">
+            <h2>3. 计算注意力权重</h2>
+            <p>计算Query和Key的点积，然后缩放并应用softmax:</p>
+            <div class="attention-matrix">
+                <div class="attention-cell">Q1·K1</div>
+                <div class="attention-cell">Q1·K2</div>
+                <div class="attention-cell">Q1·K3</div>
+                <div class="attention-cell">→ softmax →</div>
+                <div class="attention-cell">Q2·K1</div>
+                <div class="attention-cell">Q2·K2</div>
+                <div class="attention-cell">Q2·K3</div>
+                <div class="attention-cell">→ softmax →</div>
+                <div class="attention-cell">Q3·K1</div>
+                <div class="attention-cell">Q3·K2</div>
+                <div class="attention-cell">Q3·K3</div>
+                <div class="attention-cell">→ softmax →</div>
+            </div>
+            <button class="button" onclick="calculateAttention()">计算注意力</button>
+            <div class="explanation" id="attention-explanation" style="display:none;">
+                对于每个Query，我们计算它与所有Key的点积，得到一个分数，表示该词对当前词的重要性。
+                然后将这些分数缩放(除以√d<sub>k</sub>)，应用softmax得到概率分布。
+            </div>
+            <div id="attention-results" style="display:none; margin-top: 15px;">
+                <p>注意力权重结果:</p>
+                <div class="attention-matrix">
+                    <div class="attention-cell">0.6</div>
+                    <div class="attention-cell">0.2</div>
+                    <div class="attention-cell">0.2</div>
+                    <div class="attention-cell">词1关注</div>
+                    <div class="attention-cell">0.1</div>
+                    <div class="attention-cell">0.7</div>
+                    <div class="attention-cell">0.2</div>
+                    <div class="attention-cell">词2关注</div>
+                    <div class="attention-cell">0.3</div>
+                    <div class="attention-cell">0.3</div>
+                    <div class="attention-cell">0.4</div>
+                    <div class="attention-cell">词3关注</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step" id="step4">
+            <h2>4. 加权Value生成输出</h2>
+            <p>使用注意力权重对Value进行加权求和:</p>
+            <div id="output-calculation" style="display:none;">
+                <p>输出1 = 0.6*V1 + 0.2*V2 + 0.2*V3</p>
+                <p>输出2 = 0.1*V1 + 0.7*V2 + 0.2*V3</p>
+                <p>输出3 = 0.3*V1 + 0.3*V2 + 0.4*V3</p>
+                <div class="vectors">
+                    <div class="vector" id="output1">
+                        <div class="vector-label">输出1</div>
+                        <div class="dim">0.4</div>
+                        <div class="dim">-0.1</div>
+                        <div class="dim">0.3</div>
+                    </div>
+                    <div class="vector" id="output2">
+                        <div class="vector-label">输出2</div>
+                        <div class="dim">0.0</div>
+                        <div class="dim">0.2</div>
+                        <div class="dim">0.1</div>
+                    </div>
+                    <div class="vector" id="output3">
+                        <div class="vector-label">输出3</div>
+                        <div class="dim">0.3</div>
+                        <div class="dim">0.0</div>
+                        <div class="dim">0.2</div>
+                    </div>
+                </div>
+            </div>
+            <button class="button" onclick="showOutput()">显示输出</button>
+            <div class="explanation" id="output-explanation" style="display:none;">
+                最终的输出是每个Value向量的加权和，权重来自上一步计算的注意力概率。
+                这样每个位置的输出都包含了整个序列的相关信息。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showProjection() {
+            document.getElementById('projection-explanation').style.display = 'block';
+            // 添加动画效果
+            const qkvVectors = document.querySelectorAll('#step2 .vector');
+            qkvVectors.forEach(vec => {
+                vec.classList.add('highlight');
+                setTimeout(() => {
+                    vec.classList.remove('highlight');
+                }, 1000);
+            });
+        }
+        
+        function calculateAttention() {
+            document.getElementById('attention-explanation').style.display = 'block';
+            document.getElementById('attention-results').style.display = 'block';
+            
+            // 模拟计算过程动画
+            const cells = document.querySelectorAll('.attention-cell');
+            cells.forEach(cell => {
+                if (!cell.textContent.includes('→') && !cell.textContent.includes('关注')) {
+                    cell.classList.add('active');
+                    setTimeout(() => {
+                        cell.classList.remove('active');
+                    }, 500);
+                }
+            });
+        }
+        
+        function showOutput() {
+            document.getElementById('output-explanation').style.display = 'block';
+            document.getElementById('output-calculation').style.display = 'block';
+            
+            // 输出向量动画
+            const outputs = document.querySelectorAll('#output-calculation .vector');
+            outputs.forEach(out => {
+                out.classList.add('highlight');
+                setTimeout(() => {
+                    out.classList.remove('highlight');
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+</html>

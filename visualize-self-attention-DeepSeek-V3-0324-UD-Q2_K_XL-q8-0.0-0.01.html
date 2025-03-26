@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transformer Self-Attention 可视化</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 60px);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .input {
+            background-color: #e6f7ff;
+        }
+        .query {
+            background-color: #d9f7d9;
+        }
+        .key {
+            background-color: #fff7e6;
+        }
+        .value {
+            background-color: #f0f0ff;
+        }
+        .attention {
+            background-color: #ffebee;
+        }
+        .output {
+            background-color: #e8f5e9;
+        }
+        .slider-container {
+            width: 100%;
+            margin: 20px 0;
+        }
+        .slider {
+            width: 100%;
+        }
+        .button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .explanation {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Transformer Self-Attention 可视化</h1>
+        
+        <div class="slider-container">
+            <p>步骤控制:</p>
+            <input type="range" min="1" max="6" value="1" class="slider" id="stepSlider">
+            <div id="stepDescription">步骤 1/6: 输入表示</div>
+        </div>
+        
+        <div>
+            <button class="button" id="prevBtn">上一步</button>
+            <button class="button" id="nextBtn">下一步</button>
+            <button class="button" id="resetBtn">重置</button>
+            <button class="button" id="autoBtn">自动播放</button>
+        </div>
+        
+        <div id="visualization">
+            <!-- 可视化内容将通过JavaScript动态生成 -->
+        </div>
+        
+        <div class="explanation" id="explanation">
+            <h3>Self-Attention 机制解释</h3>
+            <p id="explanationText">Self-Attention允许模型在处理每个单词时关注输入序列中的所有单词，计算每个单词对其他单词的注意力权重。</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化数据
+        const inputTokens = ["The", "cat", "sat", "on", "mat"];
+        const embeddingSize = 3;
+        const numHeads = 1;
+        
+        // 随机生成权重矩阵 (实际中这些是学习得到的)
+        const Wq = generateRandomMatrix(embeddingSize, embeddingSize);
+        const Wk = generateRandomMatrix(embeddingSize, embeddingSize);
+        const Wv = generateRandomMatrix(embeddingSize, embeddingSize);
+        
+        // 生成随机输入嵌入
+        const inputEmbeddings = inputTokens.map(() => 
+            Array(embeddingSize).fill(0).map(() => (Math.random() * 2 - 1).toFixed(2))
+        );
+        
+        // 计算中间结果
+        const queries = multiplyMatrices(inputEmbeddings, Wq);
+        const keys = multiplyMatrices(inputEmbeddings, Wk);
+        const values = multiplyMatrices(inputEmbeddings, Wv);
+        
+        // 计算注意力分数
+        const attentionScores = computeAttentionScores(queries, keys);
+        const attentionWeights = softmax(attentionScores);
+        
+        // 计算输出
+        const output = multiplyMatrices(attentionWeights, values);
+        
+        let currentStep = 1;
+        let autoPlayInterval = null;
+        
+        // 初始化可视化
+        updateVisualization();
+        
+        // 事件监听
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                updateVisualization();
+            }
+        });
+        
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentStep < 6) {
+                currentStep++;
+                updateVisualization();
+            }
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            currentStep = 1;
+            updateVisualization();
+        });
+        
+        document.getElementById('autoBtn').addEventListener('click', () => {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+                document.getElementById('autoBtn').textContent = "自动播放";
+            } else {
+                autoPlayInterval = setInterval(() => {
+                    if (currentStep < 6) {
+                        currentStep++;
+                        updateVisualization();
+                    } else {
+                        clearInterval(autoPlayInterval);
+                        autoPlayInterval = null;
+                        document.getElementById('autoBtn').textContent = "自动播放";
+                    }
+                }, 2000);
+                document.getElementById('autoBtn').textContent = "停止播放";
+            }
+        });
+        
+        document.getElementById('stepSlider').addEventListener('input', (e) => {
+            currentStep = parseInt(e.target.value);
+            updateVisualization();
+        });
+        
+        // 更新可视化
+        function updateVisualization() {
+            const visualization = document.getElementById('visualization');
+            const stepDescription = document.getElementById('stepDescription');
+            const explanationText = document.getElementById('explanationText');
+            
+            document.getElementById('stepSlider').value = currentStep;
+            
+            visualization.innerHTML = '';
+            
+            switch(currentStep) {
+                case 1:
+                    stepDescription.textContent = "步骤 1/6: 输入表示";
+                    explanationText.innerHTML = `这是输入的词序列，每个词被转换为一个<strong class="highlight">向量表示</strong>（嵌入）。这些向量捕获了每个词的语义信息。`;
+                    showInputEmbeddings(visualization);
+                    break;
+                case 2:
+                    stepDescription.textContent = "步骤 2/6: 计算Query向量";
+                    explanationText.innerHTML = `每个输入向量与<strong class="highlight">Query权重矩阵(Wq)</strong>相乘，得到Query向量。Query表示当前词想要寻找的信息。`;
+                    showQueryComputation(visualization);
+                    break;
+                case 3:
+                    stepDescription.textContent = "步骤 3/6: 计算Key向量";
+                    explanationText.innerHTML = `每个输入向量与<strong class="highlight">Key权重矩阵(Wk)</strong>相乘，得到Key向量。Key表示每个词可以提供的信息。`;
+                    showKeyComputation(visualization);
+                    break;
+                case 4:
+                    stepDescription.textContent = "步骤 4/6: 计算Value向量";
+                    explanationText.innerHTML = `每个输入向量与<strong class="highlight">Value权重矩阵(Wv)</strong>相乘，得到Value向量。Value是实际被关注和组合的信息。`;
+                    showValueComputation(visualization);
+                    break;
+                case 5:
+                    stepDescription.textContent = "步骤 5/6: 计算注意力权重";
+                    explanationText.innerHTML = `Query和Key的点积计算得到注意力分数，然后通过<strong class="highlight">softmax</strong>归一化为注意力权重。这决定了每个词对其他词的关注程度。`;
+                    showAttentionWeights(visualization);
+                    break;
+                case 6:
+                    stepDescription.textContent = "步骤 6/6: 计算输出";
+                    explanationText.innerHTML = `注意力权重与Value向量相乘并求和，得到最终的<strong class="highlight">Self-Attention输出</strong>。每个输出位置都包含了来自所有输入位置的相关信息。`;
+                    showOutputComputation(visualization);
+                    break;
+            }
+        }
+        
+        // 显示输入嵌入
+        function showInputEmbeddings(container) {
+            const title = document.createElement('h2');
+            title.textContent = "输入表示";
+            container.appendChild(title);
+            
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix';
+            
+            for (let i = 0; i < inputTokens.length; i++) {
+                const tokenCell = document.createElement('div');
+                tokenCell.className = 'cell';
+                tokenCell.textContent = inputTokens[i];
+                matrix.appendChild(tokenCell);
+                
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell input';
+                    cell.textContent = inputEmbeddings[i][j];
+                    matrix.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(matrix);
+        }
+        
+        // 显示Query计算
+        function showQueryComputation(container) {
+            const title = document.createElement('h2');
+            title.textContent = "Query向量计算 (输入 × Wq)";
+            container.appendChild(title);
+            
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix';
+            
+            for (let i = 0; i < inputTokens.length; i++) {
+                const tokenCell = document.createElement('div');
+                tokenCell.className = 'cell';
+                tokenCell.textContent = inputTokens[i];
+                matrix.appendChild(tokenCell);
+                
+                // 输入向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell input';
+                    cell.textContent = inputEmbeddings[i][j];
+                    matrix.appendChild(cell);
+                }
+                
+                // 乘号
+                const timesCell = document.createElement('div');
+                timesCell.className = 'cell';
+                timesCell.textContent = "×";
+                matrix.appendChild(timesCell);
+                
+                // Wq矩阵
+                for (let j = 0; j < embeddingSize; j++) {
+                    for (let k = 0; k < embeddingSize; k++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.textContent = Wq[j][k];
+                        matrix.appendChild(cell);
+                    }
+                }
+                
+                // 等号
+                const equalsCell = document.createElement('div');
+                equalsCell.className = 'cell';
+                equalsCell.textContent = "=";
+                matrix.appendChild(equalsCell);
+                
+                // Query向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell query';
+                    cell.textContent = queries[i][j];
+                    matrix.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(matrix);
+        }
+        
+        // 显示Key计算
+        function showKeyComputation(container) {
+            const title = document.createElement('h2');
+            title.textContent = "Key向量计算 (输入 × Wk)";
+            container.appendChild(title);
+            
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix';
+            
+            for (let i = 0; i < inputTokens.length; i++) {
+                const tokenCell = document.createElement('div');
+                tokenCell.className = 'cell';
+                tokenCell.textContent = inputTokens[i];
+                matrix.appendChild(tokenCell);
+                
+                // 输入向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell input';
+                    cell.textContent = inputEmbeddings[i][j];
+                    matrix.appendChild(cell);
+                }
+                
+                // 乘号
+                const timesCell = document.createElement('div');
+                timesCell.className = 'cell';
+                timesCell.textContent = "×";
+                matrix.appendChild(timesCell);
+                
+                // Wk矩阵
+                for (let j = 0; j < embeddingSize; j++) {
+                    for (let k = 0; k < embeddingSize; k++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.textContent = Wk[j][k];
+                        matrix.appendChild(cell);
+                    }
+                }
+                
+                // 等号
+                const equalsCell = document.createElement('div');
+                equalsCell.className = 'cell';
+                equalsCell.textContent = "=";
+                matrix.appendChild(equalsCell);
+                
+                // Key向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell key';
+                    cell.textContent = keys[i][j];
+                    matrix.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(matrix);
+        }
+        
+        // 显示Value计算
+        function showValueComputation(container) {
+            const title = document.createElement('h2');
+            title.textContent = "Value向量计算 (输入 × Wv)";
+            container.appendChild(title);
+            
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix';
+            
+            for (let i = 0; i < inputTokens.length; i++) {
+                const tokenCell = document.createElement('div');
+                tokenCell.className = 'cell';
+                tokenCell.textContent = inputTokens[i];
+                matrix.appendChild(tokenCell);
+                
+                // 输入向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell input';
+                    cell.textContent = inputEmbeddings[i][j];
+                    matrix.appendChild(cell);
+                }
+                
+                // 乘号
+                const timesCell = document.createElement('div');
+                timesCell.className = 'cell';
+                timesCell.textContent = "×";
+                matrix.appendChild(timesCell);
+                
+                // Wv矩阵
+                for (let j = 0; j < embeddingSize; j++) {
+                    for (let k = 0; k < embeddingSize; k++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.textContent = Wv[j][k];
+                        matrix.appendChild(cell);
+                    }
+                }
+                
+                // 等号
+                const equalsCell = document.createElement('div');
+                equalsCell.className = 'cell';
+                equalsCell.textContent = "=";
+                matrix.appendChild(equalsCell);
+                
+                // Value向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell value';
+                    cell.textContent = values[i][j];
+                    matrix.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(matrix);
+        }
+        
+        // 显示注意力权重
+        function showAttentionWeights(container) {
+            const title = document.createElement('h2');
+            title.textContent = "注意力权重计算 (softmax(Query·Key^T)/√d)";
+            container.appendChild(title);
+            
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix';
+            
+            // 添加表头
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'cell';
+            matrix.appendChild(emptyCell);
+            
+            for (let i = 0; i < inputTokens.length; i++) {
+                const headerCell = document.createElement('div');
+                headerCell.className = 'cell';
+                headerCell.textContent = inputTokens[i];
+                matrix.appendChild(headerCell);
+            }
+            
+            // 添加每行
+            for (let i = 0; i < inputTokens.length; i++) {
+                const rowHeader = document.createElement('div');
+                rowHeader.className = 'cell';
+                rowHeader.textContent = inputTokens[i];
+                matrix.appendChild(rowHeader);
+                
+                for (let j = 0; j < inputTokens.length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell attention';
+                    cell.textContent = attentionWeights[i][j].toFixed(2);
+                    matrix.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(matrix);
+        }
+        
+        // 显示输出计算
+        function showOutputComputation(container) {
+            const title = document.createElement('h2');
+            title.textContent = "输出计算 (注意力权重 × Value)";
+            container.appendChild(title);
+            
+            const matrix = document.createElement('div');
+            matrix.className = 'matrix';
+            
+            for (let i = 0; i < inputTokens.length; i++) {
+                const tokenCell = document.createElement('div');
+                tokenCell.className = 'cell';
+                tokenCell.textContent = inputTokens[i];
+                matrix.appendChild(tokenCell);
+                
+                // 注意力权重行
+                for (let j = 0; j < inputTokens.length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell attention';
+                    cell.textContent = attentionWeights[i][j].toFixed(2);
+                    matrix.appendChild(cell);
+                }
+                
+                // 乘号
+                const timesCell = document.createElement('div');
+                timesCell.className = 'cell';
+                timesCell.textContent = "×";
+                matrix.appendChild(timesCell);
+                
+                // Value矩阵
+                for (let j = 0; j < inputTokens.length; j++) {
+                    for (let k = 0; k < embeddingSize; k++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell value';
+                        cell.textContent = values[j][k];
+                        matrix.appendChild(cell);
+                    }
+                }
+                
+                // 等号
+                const equalsCell = document.createElement('div');
+                equalsCell.className = 'cell';
+                equalsCell.textContent = "=";
+                matrix.appendChild(equalsCell);
+                
+                // 输出向量
+                for (let j = 0; j < embeddingSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell output';
+                    cell.textContent = output[i][j].toFixed(2);
+                    matrix.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(matrix);
+        }
+        
+        // 辅助函数：生成随机矩阵
+        function generateRandomMatrix(rows, cols) {
+            return Array(rows).fill().map(() => 
+                Array(cols).fill().map(() => (Math.random() * 2 - 1).toFixed(2))
+            );
+        }
+        
+        // 辅助函数：矩阵乘法
+        function multiplyMatrices(a, b) {
+            const result = [];
+            for (let i = 0; i < a.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < b[0].length; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < a[0].length; k++) {
+                        sum += parseFloat(a[i][k]) * parseFloat(b[k][j]);
+                    }
+                    result[i][j] = sum.toFixed(2);
+                }
+            }
+            return result;
+        }
+        
+        // 辅助函数：计算注意力分数
+        function computeAttentionScores(queries, keys) {
+            const scores = [];
+            const d = queries[0].length; // 维度
+            
+            for (let i = 0; i < queries.length; i++) {
+                scores[i] = [];
+                for (let j = 0; j < keys.length; j++) {
+                    let score = 0;
+                    for (let k = 0; k < queries[i].length; k++) {
+                        score += parseFloat(queries[i][k]) * parseFloat(keys[j][k]);
+                    }
+                    scores[i][j] = score / Math.sqrt(d);
+                }
+            }
+            
+            return scores;
+        }
+        
+        // 辅助函数：softmax
+        function softmax(matrix) {
+            const result = [];
+            
+            for (let i = 0; i < matrix.length; i++) {
+                const row = matrix[i];
+                const max = Math.max(...row);
+                const expRow = row.map(x => Math.exp(x - max));
+                const sum = expRow.reduce((a, b) => a + b, 0);
+                
+                result[i] = expRow.map(x => x / sum);
+            }
+            
+            return result;
+        }
+    </script>
+</body>
+</html>
