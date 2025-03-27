@@ -1,1 +1,1 @@
-# DeepSeek-V3-0324-CodeGen
+# [DeepSeek-V3–0324 for Code Generation Tasks, How many bits of Quantization is enough?](https://medium.com/@GenerationAI/deepseek-v3-0324-for-code-generation-tasks-how-many-bits-of-quantization-is-enough-56b2548fc7a5)
