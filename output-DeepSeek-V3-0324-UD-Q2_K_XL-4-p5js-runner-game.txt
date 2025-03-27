@@ -1,0 +1,362 @@
+Make me a captivating endless runner game. Key instructions on the screen. p5js scene, no HTML. I like pixelated dinosaurs and interesting backgrounds.# Pixel Dino Endless Runner (p5.js)
+
+Here's a captivating endless runner game featuring a pixelated dinosaur with interesting backgrounds. The game includes on-screen instructions and is entirely within the p5.js canvas (no HTML elements).
+
+```javascript
+let dino, obstacles = [], clouds = [];
+let gameSpeed = 5;
+let score = 0;
+let highScore = 0;
+let gameState = "start"; // start, playing, gameover
+let groundHeight = 50;
+let gravity = 0.6;
+let jumpForce = -12;
+let dinoYVelocity = 0;
+let isJumping = false;
+let dinoSprites = [];
+let currentDinoSprite = 0;
+let spriteChangeRate = 5;
+let spriteCounter = 0;
+let backgroundSprites = [];
+let currentBackground = 0;
+let backgroundChangeInterval = 1000;
+let lastBackgroundChange = 0;
+
+function preload() {
+  // Dino sprites (simplified pixel art)
+  dinoSprites[0] = createDinoSprite(0);
+  dinoSprites[1] = createDinoSprite(1);
+  dinoSprites[2] = createDinoSprite(2); // Jump sprite
+  
+  // Background sprites (simplified pixel art)
+  backgroundSprites[0] = createDesertBackground();
+  backgroundSprites[1] = createJungleBackground();
+  backgroundSprites[2] = createNightBackground();
+}
+
+function setup() {
+  createCanvas(800, 400);
+  dino = {
+    x: 100,
+    y: height - groundHeight - 50,
+    width: 50,
+    height: 50
+  };
+  
+  // Create initial clouds
+  for (let i = 0; i < 5; i++) {
+    clouds.push(createCloud());
+  }
+}
+
+function draw() {
+  // Game state handling
+  switch(gameState) {
+    case "start":
+      drawStartScreen();
+      break;
+    case "playing":
+      updateGame();
+      drawGame();
+      break;
+    case "gameover":
+      drawGameOver();
+      break;
+  }
+}
+
+function updateGame() {
+  // Update background
+  if (millis() - lastBackgroundChange > backgroundChangeInterval) {
+    currentBackground = (currentBackground + 1) % backgroundSprites.length;
+    lastBackgroundChange = millis();
+  }
+  
+  // Update dino animation
+  if (!isJumping) {
+    spriteCounter++;
+    if (spriteCounter >= spriteChangeRate) {
+      currentDinoSprite = (currentDinoSprite + 1) % 2;
+      spriteCounter = 0;
+    }
+  } else {
+    currentDinoSprite = 2; // Jump sprite
+  }
+  
+  // Apply gravity
+  dino.y += dinoYVelocity;
+  dinoYVelocity += gravity;
+  
+  // Ground collision
+  if (dino.y >= height - groundHeight - dino.height) {
+    dino.y = height - groundHeight - dino.height;
+    dinoYVelocity = 0;
+    isJumping = false;
+  }
+  
+  // Move obstacles
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    obstacles[i].x -= gameSpeed;
+    
+    // Collision detection
+    if (checkCollision(dino, obstacles[i])) {
+      gameState = "gameover";
+      if (score > highScore) {
+        highScore = score;
+      }
+    }
+    
+    // Remove off-screen obstacles
+    if (obstacles[i].x < -obstacles[i].width) {
+      obstacles.splice(i, 1);
+      score++;
+      gameSpeed += 0.1; // Increase difficulty
+    }
+  }
+  
+  // Move clouds
+  for (let i = clouds.length - 1; i >= 0; i--) {
+    clouds[i].x -= gameSpeed * 0.5;
+    if (clouds[i].x < -clouds[i].width) {
+      clouds.splice(i, 1);
+      clouds.push(createCloud());
+    }
+  }
+  
+  // Spawn new obstacles
+  if (frameCount % 100 == 0 && random() > 0.3) {
+    obstacles.push(createObstacle());
+  }
+}
+
+function drawGame() {
+  // Draw background
+  image(backgroundSprites[currentBackground], 0, 0, width, height - groundHeight);
+  
+  // Draw ground
+  fill(180, 150, 100);
+  rect(0, height - groundHeight, width, groundHeight);
+  
+  // Draw clouds
+  for (let cloud of clouds) {
+    fill(255);
+    ellipse(cloud.x, cloud.y, cloud.width, cloud.height);
+  }
+  
+  // Draw obstacles
+  for (let obs of obstacles) {
+    if (obs.type === "cactus") {
+      fill(0, 150, 0);
+      rect(obs.x, height - groundHeight - obs.height, obs.width, obs.height);
+    } else {
+      fill(150, 100, 0);
+      rect(obs.x, height - groundHeight - obs.height, obs.width, obs.height);
+    }
+  }
+  
+  // Draw dino
+  image(dinoSprites[currentDinoSprite], dino.x, dino.y, dino.width, dino.height);
+  
+  // Draw score
+  fill(0);
+  textSize(24);
+  text("Score: " + score, 20, 30);
+}
+
+function drawStartScreen() {
+  background(240);
+  fill(0);
+  textSize(32);
+  textAlign(CENTER, CENTER);
+  text("PIXEL DINO RUNNER", width/2, height/2 - 60);
+  
+  textSize(20);
+  text("Press SPACE to jump", width/2, height/2);
+  text("Press ENTER to start", width/2, height/2 + 40);
+  
+  textSize(16);
+  text("High Score: " + highScore, width/2, height/2 + 80);
+}
+
+function drawGameOver() {
+  fill(0, 100);
+  rect(0, 0, width, height);
+  
+  fill(255);
+  textSize(32);
+  textAlign(CENTER, CENTER);
+  text("GAME OVER", width/2, height/2 - 60);
+  
+  textSize(24);
+  text("Score: " + score, width/2, height/2 - 20);
+  text("High Score: " + highScore, width/2, height/2 + 20);
+  
+  textSize(20);
+  text("Press ENTER to restart", width/2, height/2 + 60);
+}
+
+function keyPressed() {
+  if (keyCode === 32 && !isJumping && gameState === "playing") { // SPACE
+    dinoYVelocity = jumpForce;
+    isJumping = true;
+  }
+  
+  if (keyCode === 13) { // ENTER
+    if (gameState === "start") {
+      gameState = "playing";
+    } else if (gameState === "gameover") {
+      resetGame();
+      gameState = "playing";
+    }
+  }
+}
+
+function resetGame() {
+  obstacles = [];
+  score = 0;
+  gameSpeed = 5;
+  dino.y = height - groundHeight - dino.height;
+  dinoYVelocity = 0;
+  isJumping = false;
+}
+
+function checkCollision(dino, obs) {
+  return dino.x < obs.x + obs.width &&
+         dino.x + dino.width > obs.x &&
+         dino.y < height - groundHeight &&
+         dino.y + dino.height > height - groundHeight - obs.height;
+}
+
+function createObstacle() {
+  let type = random() > 0.5 ? "cactus" : "rock";
+  let height = type === "cactus" ? random(30, 60) : random(20, 40);
+  let width = type === "cactus" ? 20 : 30;
+  
+  return {
+    x: width,
+    y: height - groundHeight - height,
+    width: width,
+    height: height,
+    type: type
+  };
+}
+
+function createCloud() {
+  return {
+    x: random(width, width + 200),
+    y: random(50, 150),
+    width: random(40, 80),
+    height: random(20, 40)
+  };
+}
+
+function createDinoSprite(frame) {
+  let sprite = createGraphics(50, 50);
+  sprite.noStroke();
+  
+  // Base color
+  sprite.fill(100, 150, 100);
+  
+  if (frame === 0) { // Run frame 1
+    // Body
+    sprite.rect(10, 20, 30, 20);
+    // Head
+    sprite.rect(30, 10, 15, 10);
+    // Legs
+    sprite.rect(15, 40, 10, 10);
+    sprite.rect(25, 40, 10, 10);
+  } else if (frame === 1) { // Run frame 2
+    // Body
+    sprite.rect(10, 20, 30, 20);
+    // Head
+    sprite.rect(30, 10, 15, 10);
+    // Legs
+    sprite.rect(10, 40, 10, 10);
+    sprite.rect(30, 40, 10, 10);
+  } else { // Jump frame
+    // Body
+    sprite.rect(10, 15, 30, 20);
+    // Head
+    sprite.rect(30, 5, 15, 10);
+    // Legs (stretched)
+    sprite.rect(15, 35, 10, 15);
+    sprite.rect(25, 35, 10, 15);
+  }
+  
+  return sprite;
+}
+
+function createDesertBackground() {
+  let bg = createGraphics(width, height - groundHeight);
+  bg.background(250, 220, 150);
+  
+  // Sun
+  bg.fill(255, 200, 100);
+  bg.ellipse(width - 100, 80, 60, 60);
+  
+  // Distant mountains
+  bg.fill(200, 180, 120);
+  for (let i = 0; i < 5; i++) {
+    bg.triangle(
+      i * 160, height - groundHeight,
+      i * 160 + 80, height - groundHeight - 60,
+      i * 160 + 160, height - groundHeight
+    );
+  }
+  
+  return bg;
+}
+
+function createJungleBackground() {
+  let bg = createGraphics(width, height - groundHeight);
+  bg.background(150, 200, 150);
+  
+  // Distant trees
+  bg.fill(50, 120, 50);
+  for (let i = 0; i < 5; i++) {
+    bg.triangle(
+      i * 160, height - groundHeight,
+      i * 160 + 80, height - groundHeight - 120,
+      i * 160 + 160, height - groundHeight
+    );
+  }
+  
+  return bg;
+}
+
+function createNightBackground() {
+  let bg = createGraphics(width, height - groundHeight);
+  bg.background(50, 60, 100);
+  
+  // Stars
+  bg.fill(255);
+  for (let i = 0; i < 50; i++) {
+    bg.ellipse(random(width), random(height - groundHeight - 100), 2, 2);
+  }
+  
+  // Moon
+  bg.fill(220);
+  bg.ellipse(width - 100, 80, 40, 40);
+  
+  return bg;
+}
+```
+
+## How to Play:
+1. Press ENTER to start the game
+2. Press SPACE to make the dinosaur jump over obstacles
+3. The game gets faster as you score more points
+4. Backgrounds change periodically to keep things interesting
+5. After game over, press ENTER to restart
+
+## Features:
+- Pixelated dinosaur with running and jumping animations
+- Three different backgrounds (desert, jungle, night) that cycle
+- Simple but effective pixel art style
+- Increasing difficulty
+- Score tracking with high score
+- On-screen instructions
+
+The game is entirely contained within the p5.js canvas with no HTML elements, as requested. The dinosaur and backgrounds are created programmatically to maintain the pixelated aesthetic. [end of text]
+
+
