@@ -1,0 +1,567 @@
+Develop a simple 3D game using Three.js where the player navigates a procedurally generated maze. The maze should be created programmatically with walls and a floor, all rendered as basic geometric shapes (e.g., cubes or planes) without any imported assets.
+The player controls a first-person camera with WASD keys and mouse-look functionality. Add a goal (e.g., a glowing sphere) that the player must reach to win, and display a 'You Win' message on screen when they succeed. Compare how two models generate the Three.js scene setup, camera controls, collision detection, and procedural maze algorithm, focusing on performance and playability.# 3D Maze Game with Three.js
+
+Here's a simple 3D maze game using Three.js with procedural generation and first-person controls. I'll implement two different approaches for comparison.
+
+## Approach 1: Simple Implementation
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Maze Game - Simple</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #win-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px black;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="win-message">You Win!</div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // Controls
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        scene.add(controls.getObject());
+
+        // Maze parameters
+        const mazeSize = 15;
+        const cellSize = 2;
+        const wallHeight = 2;
+        let maze = [];
+        let goal;
+
+        // Generate maze using Depth-First Search
+        function generateMaze() {
+            // Initialize maze grid
+            maze = Array(mazeSize).fill().map(() => Array(mazeSize).fill(1));
+            
+            // DFS algorithm
+            const stack = [];
+            const visited = new Set();
+            const start = {x: 0, y: 0};
+            stack.push(start);
+            visited.add(`${start.x},${start.y}`);
+            maze[start.x][start.y] = 0;
+            
+            const directions = [
+                {dx: 1, dy: 0},
+                {dx: -1, dy: 0},
+                {dx: 0, dy: 1},
+                {dx: 0, dy: -1}
+            ];
+            
+            while (stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const neighbors = [];
+                
+                for (const dir of directions) {
+                    const nx = current.x + dir.dx * 2;
+                    const ny = current.y + dir.dy * 2;
+                    
+                    if (nx >= 0 && nx < mazeSize && ny >= 0 && ny < mazeSize && !visited.has(`${nx},${ny}`)) {
+                        neighbors.push({
+                            x: nx,
+                            y: ny,
+                            wallX: current.x + dir.dx,
+                            wallY: current.y + dir.dy
+                        });
+                    }
+                }
+                
+                if (neighbors.length > 0) {
+                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    maze[next.wallX][next.wallY] = 0;
+                    maze[next.x][next.y] = 0;
+                    visited.add(`${next.x},${next.y}`);
+                    stack.push(next);
+                } else {
+                    stack.pop();
+                }
+            }
+            
+            // Place goal in the farthest corner
+            goal = {x: mazeSize - 1, y: mazeSize - 1};
+        }
+
+        // Create maze geometry
+        function createMaze() {
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(mazeSize * cellSize, mazeSize * cellSize);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(mazeSize * cellSize / 2 - cellSize / 2, 0, mazeSize * cellSize / 2 - cellSize / 2);
+            scene.add(floor);
+            
+            // Walls
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+            
+            for (let x = 0; x < mazeSize; x++) {
+                for (let y = 0; y < mazeSize; y++) {
+                    if (maze[x][y] === 1) {
+                        const wallGeometry = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
+                        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                        wall.position.set(x * cellSize, wallHeight / 2, y * cellSize);
+                        scene.add(wall);
+                    }
+                }
+            }
+            
+            // Goal
+            const goalGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const goalMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 1
+            });
+            goal = new THREE.Mesh(goalGeometry, goalMaterial);
+            goal.position.set(
+                (mazeSize - 1) * cellSize,
+                0.5,
+                (mazeSize - 1) * cellSize
+            );
+            scene.add(goal);
+        }
+
+        // Collision detection
+        function checkCollision(position) {
+            // Simple grid-based collision
+            const gridX = Math.round(position.x / cellSize);
+            const gridZ = Math.round(position.z / cellSize);
+            
+            if (gridX < 0 || gridX >= mazeSize || gridZ < 0 || gridZ >= mazeSize) {
+                return true;
+            }
+            
+            return maze[gridX][gridZ] === 1;
+        }
+
+        // Check if player reached goal
+        function checkGoal(position) {
+            const distance = position.distanceTo(goal.position);
+            return distance < 1;
+        }
+
+        // Initialize game
+        function init() {
+            generateMaze();
+            createMaze();
+            
+            // Start position
+            controls.getObject().position.set(0, 1, 0);
+            
+            // Event listeners
+            document.addEventListener('click', () => {
+                controls.lock();
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // Game loop
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const speed = 5;
+            
+            // Movement
+            if (controls.isLocked) {
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                direction.y = 0;
+                direction.normalize();
+                
+                const moveX = (controls.moveRight ? 1 : 0) - (controls.moveLeft ? 1 : 0);
+                const moveZ = (controls.moveForward ? 1 : 0) - (controls.moveBackward ? 1 : 0);
+                
+                const moveDirection = new THREE.Vector3();
+                if (moveX !== 0 || moveZ !== 0) {
+                    const angle = Math.atan2(moveX, moveZ) + camera.rotation.y;
+                    moveDirection.set(Math.sin(angle), 0, Math.cos(angle)).normalize();
+                }
+                
+                const newPosition = controls.getObject().position.clone();
+                newPosition.addScaledVector(moveDirection, speed * delta);
+                
+                if (!checkCollision(newPosition)) {
+                    controls.getObject().position.copy(newPosition);
+                }
+                
+                // Check for win
+                if (checkGoal(controls.getObject().position)) {
+                    document.getElementById('win-message').style.display = 'block';
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
+```
+
+## Approach 2: Optimized Implementation
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Maze Game - Optimized</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #win-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px black;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="win-message">You Win!</div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
+    <script>
+        // Scene setup with performance optimizations
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // WebGLRenderer with performance settings
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Efficient lighting setup
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        // Use hemisphere light for better performance
+        const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        scene.add(hemisphereLight);
+
+        // Controls
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        scene.add(controls.getObject());
+
+        // Maze parameters
+        const mazeSize = 15;
+        const cellSize = 2;
+        const wallHeight = 2;
+        let maze = [];
+        let goal;
+
+        // More efficient maze generation using Prim's algorithm
+        function generateMaze() {
+            // Initialize maze grid
+            maze = Array(mazeSize).fill().map(() => Array(mazeSize).fill(1));
+            
+            // Prim's algorithm
+            const walls = [];
+            const visited = new Set();
+            const start = {x: 0, y: 0};
+            visited.add(`${start.x},${start.y}`);
+            maze[start.x][start.y] = 0;
+            
+            // Add neighboring walls
+            addWalls(start.x, start.y, walls);
+            
+            while (walls.length > 0) {
+                // Randomly select a wall
+                const randomIndex = Math.floor(Math.random() * walls.length);
+                const wall = walls[randomIndex];
+                walls.splice(randomIndex, 1);
+                
+                const x = wall.x;
+                const y = wall.y;
+                
+                // Check if wall divides two unvisited cells
+                let unvisitedNeighbors = 0;
+                const neighbors = [];
+                
+                if (x > 0 && !visited.has(`${x-1},${y}`)) {
+                    unvisitedNeighbors++;
+                    neighbors.push({x: x-1, y});
+                }
+                if (x < mazeSize-1 && !visited.has(`${x+1},${y}`)) {
+                    unvisitedNeighbors++;
+                    neighbors.push({x: x+1, y});
+                }
+                if (y > 0 && !visited.has(`${x},${y-1}`)) {
+                    unvisitedNeighbors++;
+                    neighbors.push({x, y: y-1});
+                }
+                if (y < mazeSize-1 && !visited.has(`${x},${y+1}`)) {
+                    unvisitedNeighbors++;
+                    neighbors.push({x, y: y+1});
+                }
+                
+                if (unvisitedNeighbors === 1) {
+                    maze[x][y] = 0;
+                    const neighbor = neighbors[0];
+                    visited.add(`${neighbor.x},${neighbor.y}`);
+                    maze[neighbor.x][neighbor.y] = 0;
+                    addWalls(neighbor.x, neighbor.y, walls);
+                }
+            }
+            
+            // Place goal in the farthest corner
+            goal = {x: mazeSize - 1, y: mazeSize - 1};
+        }
+        
+        function addWalls(x, y, walls) {
+            if (x > 0 && maze[x-1][y] === 1) walls.push({x: x-1, y});
+            if (x < mazeSize-1 && maze[x+1][y] === 1) walls.push({x: x+1, y});
+            if (y > 0 && maze[x][y-1] === 1) walls.push({x, y: y-1});
+            if (y < mazeSize-1 && maze[x][y+1] === 1) walls.push({x, y: y+1});
+        }
+
+        // Optimized maze creation with instanced geometry
+        function createMaze() {
+            // Floor - single plane
+            const floorGeometry = new THREE.PlaneGeometry(mazeSize * cellSize, mazeSize * cellSize);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x555555,
+                roughness: 1,
+                metalness: 0
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(mazeSize * cellSize / 2 - cellSize / 2, 0, mazeSize * cellSize / 2 - cellSize / 2);
+            scene.add(floor);
+            
+            // Walls - using instanced mesh for better performance
+            const wallGeometry = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
+            const wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x888888,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            // Count walls first
+            let wallCount = 0;
+            for (let x = 0; x < mazeSize; x++) {
+                for (let y = 0; y < mazeSize; y++) {
+                    if (maze[x][y] === 1) wallCount++;
+                }
+            }
+            
+            // Create instanced mesh
+            const wallMesh = new THREE.InstancedMesh(wallGeometry, wallMaterial, wallCount);
+            wallMesh.count = 0; // Reset counter
+            
+            const dummy = new THREE.Object3D();
+            for (let x = 0; x < mazeSize; x++) {
+                for (let y = 0; y < mazeSize; y++) {
+                    if (maze[x][y] === 1) {
+                        dummy.position.set(x * cellSize, wallHeight / 2, y * cellSize);
+                        dummy.updateMatrix();
+                        wallMesh.setMatrixAt(wallMesh.count++, dummy.matrix);
+                    }
+                }
+            }
+            
+            scene.add(wallMesh);
+            
+            // Goal
+            const goalGeometry = new THREE.SphereGeometry(0.5, 16, 16); // Reduced segments for performance
+            const goalMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 1,
+                roughness: 0,
+                metalness: 0.5
+            });
+            goal = new THREE.Mesh(goalGeometry, goalMaterial);
+            goal.position.set(
+                (mazeSize - 1) * cellSize,
+                0.5,
+                (mazeSize - 1) * cellSize
+            );
+            scene.add(goal);
+        }
+
+        // More precise collision detection
+        const collisionBoxes = [];
+        function setupCollisionDetection() {
+            for (let x = 0; x < mazeSize; x++) {
+                for (let y = 0; y < mazeSize; y++) {
+                    if (maze[x][y] === 1) {
+                        collisionBoxes.push({
+                            minX: x * cellSize - cellSize/2,
+                            maxX: x * cellSize + cellSize/2,
+                            minZ: y * cellSize - cellSize/2,
+                            maxZ: y * cellSize + cellSize/2
+                        });
+                    }
+                }
+            }
+        }
+
+        function checkCollision(position) {
+            // Check against all collision boxes
+            for (const box of collisionBoxes) {
+                if (position.x > box.minX && position.x < box.maxX &&
+                    position.z > box.minZ && position.z < box.maxZ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function checkGoal(position) {
+            const distance = position.distanceTo(goal.position);
+            return distance < 1;
+        }
+
+        // Initialize game
+        function init() {
+            generateMaze();
+            createMaze();
+            setupCollisionDetection();
+            
+            // Start position
+            controls.getObject().position.set(0, 1, 0);
+            
+            // Event listeners
+            document.addEventListener('click', () => {
+                controls.lock();
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // Optimized game loop
+        let lastTime = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            const delta = Math.min(0.1, (time - lastTime) / 1000);
+            lastTime = time;
+            
+            const speed = 5;
+            
+            if (controls.isLocked) {
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                direction.y = 0;
+                direction.normalize();
+                
+                const moveX = (controls.moveRight ? 1 : 0) - (controls.moveLeft ? 1 : 0);
+                const moveZ = (controls.moveForward ? 1 : 0) - (controls.moveBackward ? 1 : 0);
+                
+                const moveDirection = new THREE.Vector3();
+                if (moveX !== 0 || moveZ !== 0) {
+                    const angle = Math.atan2(moveX, moveZ) + camera.rotation.y;
+                    moveDirection.set(Math.sin(angle), 0, Math.cos(angle)).normalize();
+                }
+                
+                const newPosition = controls.getObject().position.clone();
+                newPosition.addScaledVector(moveDirection, speed * delta);
+                
+                // Check X and Z separately for smoother collision
+                const tempX = new THREE.Vector3(newPosition.x, 0, controls.getObject().position.z);
+                const tempZ = new THREE.Vector3(controls.getObject().position.x, 0, newPosition.z);
+                
+                if (!checkCollision(tempX)) {
+                    controls.getObject().position.x = newPosition.x;
+                }
+                if (!checkCollision(tempZ)) {
+                    controls.getObject().position.z = newPosition.z;
+                }
+                
+                if (checkGoal(controls.getObject().position)) {
+                    document.getElementById('win-message').style.display = 'block';
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
+```
+
+## Comparison of the Two Approaches
+
+### 1. Scene Setup
+- **Simple**: Basic scene setup with standard lighting (ambient + directional)
+- **Optimized**: Uses more efficient lighting (hemisphere light) and enables high-performance mode in renderer
+
+### 2. Camera Controls
+Both use PointerLockControls, but the optimized version:
+- Limits delta time for smoother movement
+- Handles X and Z movement separately for better collision response
+
+### 3. Collision Detection
+- **Simple**: Grid-based checking (less precise but faster)
+- **Optimized**: Pre-computes collision boxes for each wall (more precise but slightly more memory usage)
+
+### 4. Procedural Maze Algorithm
+- **Simple**: Depth-First Search (can create long corridors)
+- **Optimized**: Prim's algorithm (tends to create more branches, better maze variety)
+
+### 5. Rendering Performance
+- **Simple**: Individual meshes for each wall (higher draw calls)
+- **Optimized**: Uses InstancedMesh for walls (reduced draw calls, better performance)
+
+### 6. Playability
+- **Simple**: Good for smaller mazes, but performance may degrade with larger sizes
+- **Optimized**: Maintains good performance even with larger mazes, smoother movement
+
+The optimized version provides better performance and more consistent frame rates, especially important for WebGL applications. The simple version is easier to understand and implement but may not scale as well. [end of text]
+
+
