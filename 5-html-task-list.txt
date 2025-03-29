@@ -1,0 +1,2 @@
+Create a website application that allows users to manage a personal task list. The application should include a front-end interface built with HTML, CSS, and JavaScript, and a back-end that stores tasks in a JSON file as a simple database. Users should be able to add, edit, delete, and mark tasks as complete. Include features like sorting tasks by priority
+(low, medium, high) and filtering by completion status. Ensure the JSON file is updated in real-time as tasks are modified, and provide a clean, responsive Ul with a modern design.

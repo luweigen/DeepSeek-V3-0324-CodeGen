@@ -1,0 +1,772 @@
+Create a website application that allows users to manage a personal task list. The application should include a front-end interface built with HTML, CSS, and JavaScript, and a back-end that stores tasks in a JSON file as a simple database. Users should be able to add, edit, delete, and mark tasks as complete. Include features like sorting tasks by priority
+(low, medium, high) and filtering by completion status. Ensure the JSON file is updated in real-time as tasks are modified, and provide a clean, responsive Ul with a modern design.# Task Manager Web Application
+
+Here's a complete task management web application with frontend and backend components. The application allows users to manage tasks with all the requested features.
+
+## File Structure
+```
+task-manager/
+├── public/
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+├── server.js
+├── tasks.json
+└── package.json
+```
+
+## Backend Implementation (server.js)
+
+```javascript
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
+
+const app = express();
+const PORT = 3000;
+const DATA_FILE = path.join(__dirname, 'tasks.json');
+
+app.use(express.json());
+app.use(cors());
+app.use(express.static('public'));
+
+// Load tasks from JSON file
+function loadTasks() {
+    try {
+        const data = fs.readFileSync(DATA_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (err) {
+        return [];
+    }
+}
+
+// Save tasks to JSON file
+function saveTasks(tasks) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(tasks, null, 2), 'utf8');
+}
+
+// Get all tasks
+app.get('/tasks', (req, res) => {
+    const tasks = loadTasks();
+    res.json(tasks);
+});
+
+// Add a new task
+app.post('/tasks', (req, res) => {
+    const tasks = loadTasks();
+    const newTask = {
+        id: Date.now().toString(),
+        title: req.body.title,
+        description: req.body.description || '',
+        priority: req.body.priority || 'medium',
+        completed: false,
+        createdAt: new Date().toISOString()
+    };
+    tasks.push(newTask);
+    saveTasks(tasks);
+    res.status(201).json(newTask);
+});
+
+// Update a task
+app.put('/tasks/:id', (req, res) => {
+    const tasks = loadTasks();
+    const taskId = req.params.id;
+    const taskIndex = tasks.findIndex(task => task.id === taskId);
+    
+    if (taskIndex === -1) {
+        return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    const updatedTask = {
+        ...tasks[taskIndex],
+        ...req.body,
+        updatedAt: new Date().toISOString()
+    };
+    
+    tasks[taskIndex] = updatedTask;
+    saveTasks(tasks);
+    res.json(updatedTask);
+});
+
+// Delete a task
+app.delete('/tasks/:id', (req, res) => {
+    const tasks = loadTasks();
+    const taskId = req.params.id;
+    const filteredTasks = tasks.filter(task => task.id !== taskId);
+    
+    if (tasks.length === filteredTasks.length) {
+        return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    saveTasks(filteredTasks);
+    res.status(204).end();
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
+```
+
+## Frontend Implementation
+
+### HTML (public/index.html)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Task Manager</h1>
+            <div class="controls">
+                <div class="filter-controls">
+                    <select id="filter-status">
+                        <option value="all">All Tasks</option>
+                        <option value="completed">Completed</option>
+                        <option value="active">Active</option>
+                    </select>
+                    <select id="filter-priority">
+                        <option value="all">All Priorities</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <button id="add-task-btn" class="btn-primary">
+                    <i class="fas fa-plus"></i> Add Task
+                </button>
+            </div>
+        </header>
+
+        <div class="task-form-container" id="task-form-container">
+            <form id="task-form">
+                <h2 id="form-title">Add New Task</h2>
+                <input type="hidden" id="task-id">
+                <div class="form-group">
+                    <label for="task-title">Title</label>
+                    <input type="text" id="task-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="task-priority">Priority</label>
+                    <select id="task-priority">
+                        <option value="high">High</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancel-btn" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Task</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="task-list" id="task-list">
+            <!-- Tasks will be loaded here -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+```
+
+### CSS (public/style.css)
+
+```css
+:root {
+    --primary-color: #4a6fa5;
+    --secondary-color: #166088;
+    --accent-color: #4fc3f7;
+    --background-color: #f8f9fa;
+    --text-color: #333;
+    --light-gray: #e9ecef;
+    --medium-gray: #ced4da;
+    --dark-gray: #495057;
+    --high-priority: #ff6b6b;
+    --medium-priority: #ffd166;
+    --low-priority: #06d6a0;
+    --completed-color: #adb5bd;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    color: var(--secondary-color);
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 10px;
+}
+
+select {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--medium-gray);
+    background-color: white;
+    font-size: 1rem;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+}
+
+.btn-secondary {
+    background-color: white;
+    color: var(--dark-gray);
+    border: 1px solid var(--medium-gray);
+}
+
+.btn-secondary:hover {
+    background-color: var(--light-gray);
+}
+
+.task-form-container {
+    display: none;
+    background-color: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.task-form-container.show {
+    display: block;
+}
+
+.task-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+}
+
+.form-group input, .form-group textarea, .form-group select {
+    padding: 10px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task-card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.task-card:hover {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.task-card.completed {
+    opacity: 0.8;
+    border-left: 4px solid var(--completed-color);
+}
+
+.task-card.high-priority {
+    border-left: 4px solid var(--high-priority);
+}
+
+.task-card.medium-priority {
+    border-left: 4px solid var(--medium-priority);
+}
+
+.task-card.low-priority {
+    border-left: 4px solid var(--low-priority);
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.task-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.task-completed {
+    text-decoration: line-through;
+    color: var(--completed-color);
+}
+
+.task-priority {
+    font-size: 0.9rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background-color: var(--light-gray);
+    color: var(--dark-gray);
+}
+
+.task-priority.high {
+    background-color: var(--high-priority);
+    color: white;
+}
+
+.task-priority.medium {
+    background-color: var(--medium-priority);
+    color: var(--text-color);
+}
+
+.task-priority.low {
+    background-color: var(--low-priority);
+    color: white;
+}
+
+.task-description {
+    margin-bottom: 15px;
+    color: var(--dark-gray);
+}
+
+.task-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--dark-gray);
+}
+
+.task-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.task-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--dark-gray);
+    transition: color 0.3s ease;
+}
+
+.task-btn:hover {
+    color: var(--secondary-color);
+}
+
+.task-btn.delete:hover {
+    color: var(--high-priority);
+}
+
+@media (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filter-controls {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    select {
+        width: 100%;
+    }
+}
+```
+
+### JavaScript (public/script.js)
+
+```javascript
+document.addEventListener('DOMContentLoaded', function() {
+    const taskFormContainer = document.getElementById('task-form-container');
+    const taskForm = document.getElementById('task-form');
+    const taskList = document.getElementById('task-list');
+    const addTaskBtn = document.getElementById('add-task-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const filterStatus = document.getElementById('filter-status');
+    const filterPriority = document.getElementById('filter-priority');
+    
+    let tasks = [];
+    let isEditing = false;
+    let currentTaskId = null;
+    
+    // Load tasks from server
+    async function loadTasks() {
+        try {
+            const response = await fetch('/tasks');
+            tasks = await response.json();
+            renderTasks();
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+        }
+    }
+    
+    // Render tasks based on filters
+    function renderTasks() {
+        const statusFilter = filterStatus.value;
+        const priorityFilter = filterPriority.value;
+        
+        let filteredTasks = tasks;
+        
+        // Filter by status
+        if (statusFilter === 'completed') {
+            filteredTasks = filteredTasks.filter(task => task.completed);
+        } else if (statusFilter === 'active') {
+            filteredTasks = filteredTasks.filter(task => !task.completed);
+        }
+        
+        // Filter by priority
+        if (priorityFilter !== 'all') {
+            filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+        }
+        
+        // Sort by priority (high to low)
+        filteredTasks.sort((a, b) => {
+            const priorityOrder = { high: 3, medium: 2, low: 1 };
+            return priorityOrder[b.priority] - priorityOrder[a.priority];
+        });
+        
+        // Clear the task list
+        taskList.innerHTML = '';
+        
+        if (filteredTasks.length === 0) {
+            taskList.innerHTML = '<p class="no-tasks">No tasks found. Add a new task to get started!</p>';
+            return;
+        }
+        
+        // Render each task
+        filteredTasks.forEach(task => {
+            const taskElement = document.createElement('div');
+            taskElement.className = `task-card ${task.priority}-priority ${task.completed ? 'completed' : ''}`;
+            
+            taskElement.innerHTML = `
+                <div class="task-header">
+                    <h3 class="task-title ${task.completed ? 'task-completed' : ''}">${task.title}</h3>
+                    <span class="task-priority ${task.priority}">${task.priority}</span>
+                </div>
+                ${task.description ? `<p class="task-description">${task.description}</p>` : ''}
+                <div class="task-footer">
+                    <small>Created: ${formatDate(task.createdAt)}</small>
+                    <div class="task-actions">
+                        <button class="task-btn complete-btn" data-id="${task.id}">
+                            <i class="fas ${task.completed ? 'fa-undo' : 'fa-check'}"></i>
+                        </button>
+                        <button class="task-btn edit-btn" data-id="${task.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="task-btn delete-btn" data-id="${task.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            taskList.appendChild(taskElement);
+        });
+        
+        // Add event listeners to buttons
+        document.querySelectorAll('.complete-btn').forEach(btn => {
+            btn.addEventListener('click', toggleTaskComplete);
+        });
+        
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', editTask);
+        });
+        
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', deleteTask);
+        });
+    }
+    
+    // Format date for display
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Show/hide task form
+    function toggleTaskForm(show, task = null) {
+        if (show) {
+            taskFormContainer.classList.add('show');
+            document.getElementById('form-title').textContent = isEditing ? 'Edit Task' : 'Add New Task';
+            
+            if (isEditing && task) {
+                document.getElementById('task-id').value = task.id;
+                document.getElementById('task-title').value = task.title;
+                document.getElementById('task-description').value = task.description || '';
+                document.getElementById('task-priority').value = task.priority;
+            } else {
+                taskForm.reset();
+                document.getElementById('task-id').value = '';
+            }
+        } else {
+            taskFormContainer.classList.remove('show');
+            isEditing = false;
+            currentTaskId = null;
+        }
+    }
+    
+    // Add new task
+    async function addTask(taskData) {
+        try {
+            const response = await fetch('/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(taskData)
+            });
+            
+            if (response.ok) {
+                loadTasks();
+            }
+        } catch (error) {
+            console.error('Error adding task:', error);
+        }
+    }
+    
+    // Update existing task
+    async function updateTask(taskId, taskData) {
+        try {
+            const response = await fetch(`/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(taskData)
+            });
+            
+            if (response.ok) {
+                loadTasks();
+            }
+        } catch (error) {
+            console.error('Error updating task:', error);
+        }
+    }
+    
+    // Toggle task completion status
+    async function toggleTaskComplete(e) {
+        const taskId = e.currentTarget.getAttribute('data-id');
+        const task = tasks.find(t => t.id === taskId);
+        
+        if (task) {
+            try {
+                await updateTask(taskId, { completed: !task.completed });
+            } catch (error) {
+                console.error('Error toggling task completion:', error);
+            }
+        }
+    }
+    
+    // Edit task
+    function editTask(e) {
+        const taskId = e.currentTarget.getAttribute('data-id');
+        const task = tasks.find(t => t.id === taskId);
+        
+        if (task) {
+            isEditing = true;
+            currentTaskId = taskId;
+            toggleTaskForm(true, task);
+        }
+    }
+    
+    // Delete task
+    async function deleteTask(e) {
+        const taskId = e.currentTarget.getAttribute('data-id');
+        
+        if (confirm('Are you sure you want to delete this task?')) {
+            try {
+                const response = await fetch(`/tasks/${taskId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadTasks();
+                }
+            } catch (error) {
+                console.error('Error deleting task:', error);
+            }
+        }
+    }
+    
+    // Event listeners
+    addTaskBtn.addEventListener('click', () => {
+        isEditing = false;
+        toggleTaskForm(true);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+        toggleTaskForm(false);
+    });
+    
+    taskForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('task-title').value.trim();
+        const description = document.getElementById('task-description').value.trim();
+        const priority = document.getElementById('task-priority').value;
+        const taskId = document.getElementById('task-id').value;
+        
+        const taskData = {
+            title,
+            description,
+            priority
+        };
+        
+        if (isEditing && taskId) {
+            await updateTask(taskId, taskData);
+        } else {
+            await addTask(taskData);
+        }
+        
+        toggleTaskForm(false);
+    });
+    
+    filterStatus.addEventListener('change', renderTasks);
+    filterPriority.addEventListener('change', renderTasks);
+    
+    // Initialize
+    loadTasks();
+});
+```
+
+## Setup Instructions
+
+1. Create a new directory for your project and navigate into it.
+
+2. Initialize a new Node.js project:
+```bash
+npm init -y
+```
+
+3. Install the required dependencies:
+```bash
+npm install express cors
+```
+
+4. Create the files as shown in the file structure above.
+
+5. Create an empty `tasks.json` file:
+```bash
+echo "[]" > tasks.json
+```
+
+6. Start the server:
+```bash
+node server.js
+```
+
+7. Open your browser and navigate to `http://localhost:3000`
+
+## Features Implemented
+
+1. **Task Management**:
+   - Add new tasks with title, description, and priority
+   - Edit existing tasks
+   - Delete tasks
+   - Mark tasks as complete/incomplete
+
+2. **Filtering**:
+   - Filter by completion status (all, completed, active)
+   - Filter by priority (all, high, medium, low)
+
+3. **Sorting**:
+   - Tasks are automatically sorted by priority (high to low)
+
+4. **Real-time Updates**:
+   - All changes are immediately saved to the JSON file
+   - UI updates instantly to reflect changes
+
+5. **Responsive Design**:
+   - Works on desktop and mobile devices
+   - Clean, modern interface with intuitive controls
+
+The application provides a complete solution for personal task management with a simple JSON-based backend that persists all changes. [end of text]
+
+
